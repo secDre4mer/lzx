@@ -162,7 +162,10 @@ func (c *compressedReader) Read(data []byte) (n int, err error) {
 			}
 		}
 		for c.remainingBytes > 0 && n < len(data) {
-			data[n] = c.Window.Lookback(c.remainingBytes)
+			data[n], err = c.Window.Lookback(c.remainingBytes)
+			if err != nil {
+				return n, err
+			}
 			c.remainingBytes--
 			c.ProcessedBytes++
 			n++
@@ -236,7 +239,10 @@ func (c *compressedReader) ReadElement() (n int, err error) {
 		c.R0, c.R1, c.R2 = matchOffset, c.R0, c.R1
 	}
 	for matchLength > 0 {
-		lookbackByte := c.Window.Lookback(int(matchOffset))
+		lookbackByte, err := c.Window.Lookback(int(matchOffset))
+		if err != nil {
+			return n, err
+		}
 		c.Window.Add(lookbackByte)
 		matchLength--
 		n++
