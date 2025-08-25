@@ -3,9 +3,11 @@ package lzx
 import (
 	"errors"
 	"math"
+
+	"github.com/secDre4mer/lzx/internal/bitstream"
 )
 
-func readTree(stream *bitStream, lengthBits int, size int) (*Tree, error) {
+func readTree(stream *bitstream.BitStream, lengthBits int, size int) (*Tree, error) {
 	var lengths = make([]byte, size)
 	for i := 0; i < len(lengths); i++ {
 		treeEntry, err := stream.ReadBits(lengthBits)
@@ -76,7 +78,7 @@ type Tree struct {
 	HuffmanTree []uint16
 }
 
-func (t Tree) Decode(stream *bitStream) (uint16, error) {
+func (t Tree) Decode(stream *bitstream.BitStream) (uint16, error) {
 	// At most, we need as many bits as the max depth. Peek at this many bits to determine the code.
 	nextBits, err := stream.PeekBits(t.MaxDepth)
 	if err != nil {
@@ -94,7 +96,7 @@ type interval struct {
 	last int64
 }
 
-func buildTree(stream *bitStream, lengths []byte, intervals []interval) (*Tree, error) {
+func buildTree(stream *bitstream.BitStream, lengths []byte, intervals []interval) (*Tree, error) {
 	for _, interval := range intervals {
 		preTree, err := readTree(stream, 4, preTreeSize)
 		if err != nil {

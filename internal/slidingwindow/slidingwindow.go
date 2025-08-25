@@ -1,4 +1,4 @@
-package lzx
+package slidingwindow
 
 // SlidingWindow implements a window of n bytes where old bytes are replaced with new ones. Old bytes within the last
 // window size can be looked up again.
@@ -8,7 +8,7 @@ type SlidingWindow struct {
 	position int
 }
 
-func NewWindow(size int) *SlidingWindow {
+func New(size int) *SlidingWindow {
 	return &SlidingWindow{
 		windowData: make([]byte, size),
 		position:   0,

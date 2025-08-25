@@ -4,25 +4,40 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+
+	"github.com/secDre4mer/lzx/internal/bitstream"
+	"github.com/secDre4mer/lzx/internal/slidingwindow"
 )
 
 type persistentData struct {
-	Window     *SlidingWindow
+	// Window is the sliding window used for LZX decompression.
+	// It is updated as data is decompressed.
+	Window *slidingwindow.SlidingWindow
+	// R0, R1, R2 are the last three offsets used for matches.
 	R0, R1, R2 uint32
 
-	IntelStarted        bool
-	IntelFileSize       uint32
+	// IntelStarted indicates whether Intel E8 decoding should be applied.
+	IntelStarted bool
+	// IntelFileSize is the original file size for Intel E8 decoding.
+	IntelFileSize uint32
+	// IntelCursorPosition is the current position in the output stream for Intel E8 decoding.
 	IntelCursorPosition int
 
+	// ResetInterval is the interval at which the bitstream should be reset.
+	// A value of 0 means no resets based on interval.
 	ResetInterval int
 
+	// MainTreeLengths and SecondaryTreeLengths store the lengths of the main and secondary trees.
+	// New blocks will provide delta updates to these slices.
 	MainTreeLengths      []byte
 	SecondaryTreeLengths []byte
 
+	// ProcessedBytes counts the number of bytes decompressed. It is used to determine when to reset the bitstream
+	// (based on ResetInterval or every 32KB).
 	ProcessedBytes int
 }
 
-func readBlockHeader(stream *bitStream, data *persistentData) (io.Reader, error) {
+func readBlockHeader(stream *bitstream.BitStream, data *persistentData) (io.Reader, error) {
 	// Read next block header
 	blockType, err := stream.ReadBits(3)
 	if err != nil {
@@ -122,7 +137,7 @@ func (u uncompressedReader) Read(p []byte) (n int, err error) {
 }
 
 type compressedReader struct {
-	Reader *bitStream
+	Reader *bitstream.BitStream
 
 	mainTree    Tree
 	lengthTree  Tree

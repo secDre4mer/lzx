@@ -1,11 +1,12 @@
-package lzx
+package bitstream
 
 import (
+	"bufio"
 	"errors"
 	"io"
 )
 
-type bitStream struct {
+type BitStream struct {
 	Internal io.Reader
 
 	// Currently cached bits
@@ -14,7 +15,13 @@ type bitStream struct {
 	cacheSize int
 }
 
-func (b *bitStream) ReadBits(c int) (int64, error) {
+func New(reader io.Reader) *BitStream {
+	// Wrap reader in a buffered reader to optimize small reads
+	return &BitStream{Internal: bufio.NewReader(reader)}
+}
+
+// ReadBits reads c bits from the stream and advances the read position.
+func (b *BitStream) ReadBits(c int) (int64, error) {
 	bits, err := b.PeekBits(c)
 	if err != nil {
 		return 0, err
@@ -24,7 +31,8 @@ func (b *bitStream) ReadBits(c int) (int64, error) {
 	return bits, nil
 }
 
-func (b *bitStream) PeekBits(c int) (int64, error) {
+// PeekBits reads c bits from the stream without advancing the read position.
+func (b *BitStream) PeekBits(c int) (int64, error) {
 	if c > 32 {
 		return 0, errors.New("invalid bit read")
 	}
@@ -44,11 +52,13 @@ func (b *bitStream) PeekBits(c int) (int64, error) {
 	return result, nil
 }
 
-func (b *bitStream) Align() {
+// Align the stream to the next 16-bit boundary.
+func (b *BitStream) Align() {
 	b.cacheSize -= b.cacheSize % 16 // Align to 16 bits
 	b.cachedData = b.cachedData & (1<<b.cacheSize - 1)
 }
 
-func (b *bitStream) BitsLeft() int {
+// BitsLeft returns the number of bits currently cached in the stream.
+func (b *BitStream) BitsLeft() int {
 	return b.cacheSize
 }

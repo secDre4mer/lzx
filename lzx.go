@@ -1,12 +1,14 @@
 package lzx
 
 import (
-	"bufio"
 	"io"
+
+	"github.com/secDre4mer/lzx/internal/bitstream"
+	"github.com/secDre4mer/lzx/internal/slidingwindow"
 )
 
 func New(reader io.Reader, windowSize int, resetInterval int) (io.Reader, error) {
-	stream := &bitStream{Internal: bufio.NewReader(reader)}
+	stream := bitstream.New(reader)
 	lzx := &Reader{stream: stream}
 	if bit, err := stream.ReadBits(1); err != nil {
 		return nil, err
@@ -17,13 +19,13 @@ func New(reader io.Reader, windowSize int, resetInterval int) (io.Reader, error)
 		}
 		lzx.IntelFileSize = uint32(fileSize)
 	}
-	lzx.Window = NewWindow(windowSize)
+	lzx.Window = slidingwindow.New(windowSize)
 	lzx.ResetInterval = resetInterval
 	return lzx, nil
 }
 
 type Reader struct {
-	stream *bitStream
+	stream *bitstream.BitStream
 
 	currentBlock io.Reader
 
