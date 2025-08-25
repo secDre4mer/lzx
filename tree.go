@@ -21,6 +21,10 @@ func readTree(stream *bitstream.BitStream, lengthBits int, size int) (*Tree, err
 }
 
 func buildTable(lengths []byte) (*Tree, error) {
+	if len(lengths) > math.MaxUint16 {
+		return nil, errors.New("too many codes")
+	}
+
 	var maxLength byte
 	for _, length := range lengths {
 		if length > maxLength {
@@ -28,24 +32,14 @@ func buildTable(lengths []byte) (*Tree, error) {
 		}
 	}
 
-	// Plausibility check: lengths should have a total sum of the size
-	code := 0
-	for _, cl := range lengths {
-		if cl > 0 {
-			code += 1 << (maxLength - cl)
-		}
-	}
-
-	if code != 1<<maxLength {
-		return nil, errors.New("invalid tree lengths")
+	// Plausibility check: lengths should describe a valid tree
+	err := verifyLengthsMatch(lengths, maxLength)
+	if err != nil {
+		return nil, err
 	}
 
 	huffmanTree := make([]uint16, 1<<maxLength)
 	position := 0
-
-	if len(lengths) > math.MaxUint16 {
-		return nil, errors.New("too many codes")
-	}
 
 	for bit := uint8(1); bit <= maxLength; bit++ {
 		amount := 1 << (maxLength - bit)
@@ -70,6 +64,24 @@ func buildTable(lengths []byte) (*Tree, error) {
 		HuffmanTree: huffmanTree,
 		MaxDepth:    int(maxLength),
 	}, nil
+}
+
+// verifyLengthsMatch checks that the provided lengths form a valid prefix-free code.
+// e.g. say that the max length is 4, then we may have 4,4,3,2,1 as valid lengths.
+// In total, the paths must form a valid tree, which means that the sum of 2^(maxLength - length)
+// over all lengths must equal 2^maxLength.
+func verifyLengthsMatch(lengths []byte, maxLength byte) error {
+	code := 0
+	for _, cl := range lengths {
+		if cl > 0 {
+			code += 1 << (maxLength - cl)
+		}
+	}
+
+	if code != 1<<maxLength {
+		return errors.New("invalid tree lengths")
+	}
+	return nil
 }
 
 type Tree struct {
